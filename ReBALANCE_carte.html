@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ReBALANCE Carte</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f6f2;
+  --white: #ffffff;
+  --border: #e0dbd0;
+  --border2: #d0cbbf;
+  --gold: #c8a96e;
+  --gold2: #e8c98a;
+  --text: #1a1a1a;
+  --muted: #999;
+  --light: #f0ede8;
+  --red: #c0392b;
+  --blue: #2980b9;
+  --green: #27ae60;
+  --section: #f4f1ec;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+  --serif: 'Cormorant Garamond', serif;
+  --sans: 'Noto Sans JP', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+button { cursor: pointer; font-family: var(--sans); }
+input, textarea, select { font-family: var(--sans); }
+
+/* ── 認証 ── */
+#auth {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; transition: opacity 0.4s;
+}
+.auth-box {
+  width: min(340px, 90vw);
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 8px; padding: 52px 40px 44px;
+  display: flex; flex-direction: column; align-items: center;
+  box-shadow: var(--shadow-lg);
+}
+.auth-logo { font-family: var(--serif); font-size: 28px; font-weight: 300; letter-spacing: .18em; margin-bottom: 4px; }
+.auth-rule { width: 36px; height: 1px; background: var(--gold); margin: 8px 0 6px; }
+.auth-sub  { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: 32px; }
+.auth-lbl  { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); align-self: flex-start; margin-bottom: 7px; }
+.auth-inp  { width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 4px; padding: 12px 14px; font-family: var(--mono); font-size: 16px; outline: none; transition: border-color .15s; margin-bottom: 14px; }
+.auth-inp:focus { border-color: var(--gold); }
+.auth-btn  { width: 100%; background: var(--text); color: var(--white); border: none; border-radius: 4px; padding: 14px; font-size: 12px; font-weight: 700; letter-spacing: .14em; transition: background .15s; margin-bottom: 12px; }
+.auth-btn:hover { background: var(--gold); }
+.auth-err  { font-size: 11px; color: var(--red); height: 14px; }
+
+/* ── ページ管理 ── */
+.page { display: none; min-height: 100vh; padding-bottom: 80px; }
+.page.active { display: block; }
+
+/* ── 共通ヘッダー ── */
+.app-header {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.back-btn {
+  background: none; border: 1px solid var(--border); border-radius: 50%;
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--muted); flex-shrink: 0; transition: all .15s;
+}
+.back-btn:hover { border-color: var(--gold); color: var(--gold); }
+.header-title { font-family: var(--serif); font-size: 20px; font-weight: 400; letter-spacing: .08em; flex: 1; }
+.header-sub   { font-size: 10px; color: var(--muted); letter-spacing: .06em; }
+.header-action {
+  background: var(--text); color: var(--white); border: none; border-radius: 4px;
+  padding: 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  flex-shrink: 0; transition: background .15s;
+}
+.header-action:hover { background: var(--gold); }
+
+/* ── 顧客一覧 ── */
+#page-list .list-header {
+  background: var(--white); padding: 32px 20px 24px;
+  border-bottom: 1px solid var(--border); text-align: center;
+}
+.list-logo { font-family: var(--serif); font-size: 28px; font-weight: 300; letter-spacing: .18em; color: var(--text); margin-bottom: 4px; }
+.list-rule { width: 36px; height: 1px; background: var(--gold); margin: 6px auto 5px; }
+.list-sub  { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+.search-wrap { position: relative; max-width: 480px; margin: 0 auto; }
+.search-inp {
+  width: 100%; background: var(--light); border: 1.5px solid var(--border);
+  border-radius: 24px; padding: 10px 18px 10px 40px;
+  font-size: 14px; outline: none; transition: border-color .15s;
+}
+.search-inp:focus { border-color: var(--gold); background: var(--white); }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+
+.client-list { padding: 16px 20px; max-width: 600px; margin: 0 auto; }
+.client-card {
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 16px 18px; margin-bottom: 10px; display: flex; align-items: center;
+  gap: 14px; cursor: pointer; transition: all .18s;
+}
+.client-card:hover { border-color: var(--gold); box-shadow: var(--shadow); transform: translateY(-1px); }
+.client-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--light); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 20px; color: var(--muted);
+  overflow: hidden; flex-shrink: 0;
+}
+.client-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.client-info { flex: 1; min-width: 0; }
+.client-name { font-size: 15px; font-weight: 500; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.client-meta { font-size: 11px; color: var(--muted); display: flex; gap: 10px; }
+.client-count { font-family: var(--mono); font-size: 11px; color: var(--gold); background: rgba(200,169,110,.1); border: 1px solid rgba(200,169,110,.3); border-radius: 12px; padding: 2px 8px; flex-shrink: 0; }
+.client-chevron { color: var(--muted); font-size: 14px; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty-icon  { font-size: 48px; margin-bottom: 12px; opacity: .4; }
+.empty-text  { font-size: 13px; line-height: 2; }
+
+.fab {
+  position: fixed; bottom: 24px; right: 24px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--text); color: var(--white);
+  border: none; font-size: 24px; box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s; z-index: 50;
+}
+.fab:hover { background: var(--gold); transform: scale(1.05); }
+
+/* ── 顧客詳細 ── */
+.client-profile {
+  background: var(--white); padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+}
+.profile-avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--light); border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 28px; color: var(--muted);
+  overflow: hidden; flex-shrink: 0; position: relative; cursor: pointer;
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar .cam-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.3);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s; border-radius: 50%;
+  font-size: 20px;
+}
+.profile-avatar:hover .cam-overlay { opacity: 1; }
+.profile-info { flex: 1; }
+.profile-name { font-family: var(--serif); font-size: 24px; font-weight: 400; letter-spacing: .06em; margin-bottom: 4px; }
+.profile-detail { font-size: 11px; color: var(--muted); line-height: 1.8; }
+
+.record-list { padding: 16px 20px; max-width: 600px; margin: 0 auto; }
+.record-section-title {
+  font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+}
+.record-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.record-card {
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+  margin-bottom: 10px; overflow: hidden; cursor: pointer; transition: all .18s;
+}
+.record-card:hover { border-color: var(--gold); box-shadow: var(--shadow); }
+.record-card-header {
+  padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+}
+.record-date { font-family: var(--mono); font-size: 13px; font-weight: 500; flex: 1; }
+.record-badges { display: flex; gap: 6px; }
+.badge {
+  font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  border-radius: 12px; padding: 3px 8px;
+}
+.badge-pd { background: rgba(41,128,185,.1); color: #2980b9; border: 1px solid rgba(41,128,185,.3); }
+.badge-pu { background: rgba(39,174,96,.1); color: #27ae60; border: 1px solid rgba(39,174,96,.3); }
+.record-card-preview {
+  padding: 0 16px 14px; font-size: 11px; color: var(--muted); line-height: 1.8;
+}
+
+/* ── 施術記録フォーム ── */
+.form-body { padding: 0 20px; max-width: 600px; margin: 0 auto; }
+.form-section {
+  background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+  margin: 16px 0; overflow: hidden;
+}
+.form-section-header {
+  background: var(--section); padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.form-section-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--text); color: var(--white);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.form-section-title { font-size: 13px; font-weight: 700; letter-spacing: .06em; }
+.form-section-body  { padding: 16px; }
+
+.form-field { margin-bottom: 16px; }
+.form-field:last-child { margin-bottom: 0; }
+.form-label {
+  display: block; font-size: 10px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
+}
+.form-input {
+  width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 6px; padding: 11px 14px; font-size: 15px; outline: none;
+  transition: border-color .15s; color: var(--text);
+}
+.form-input:focus { border-color: var(--gold); background: var(--white); }
+textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.7; }
+select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+/* 写真アップロード */
+.photo-upload {
+  border: 2px dashed var(--border); border-radius: 8px;
+  padding: 28px; text-align: center; cursor: pointer;
+  transition: all .18s; position: relative; overflow: hidden;
+}
+.photo-upload:hover { border-color: var(--gold); background: rgba(200,169,110,.04); }
+.photo-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo-upload-icon { font-size: 32px; margin-bottom: 8px; opacity: .5; }
+.photo-upload-text { font-size: 12px; color: var(--muted); line-height: 1.8; }
+.photo-preview {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px;
+}
+.photo-thumb {
+  aspect-ratio: 1; border-radius: 6px; overflow: hidden;
+  border: 1.5px solid var(--border); position: relative;
+}
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.photo-del {
+  position: absolute; top: 4px; right: 4px;
+  background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 50%;
+  width: 22px; height: 22px; font-size: 12px; display: flex; align-items: center; justify-content: center;
+}
+
+/* 部位別薬剤入力 */
+.region-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.region-card {
+  background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 12px;
+}
+.region-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.region-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.region-input-wrap { display: flex; align-items: center; gap: 6px; }
+.region-num-input {
+  flex: 1; background: var(--white); border: 1.5px solid var(--border); border-radius: 4px;
+  padding: 8px 10px; font-family: var(--mono); font-size: 18px; font-weight: 500;
+  text-align: center; outline: none; transition: border-color .15s; color: var(--text);
+}
+.region-num-input:focus { border-color: var(--gold); }
+.region-unit { font-size: 10px; color: var(--muted); }
+
+/* 評価グリッド */
+.eval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.eval-row { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.eval-row-label { font-size: 10px; color: var(--muted); margin-bottom: 8px; font-weight: 700; letter-spacing: .06em; }
+.eval-btns { display: flex; gap: 4px; }
+.eval-btn {
+  flex: 1; border: 1.5px solid var(--border); border-radius: 4px;
+  background: var(--white); padding: 6px 0; font-size: 13px; font-weight: 700;
+  transition: all .15s; color: var(--muted);
+}
+.eval-btn.sel-great  { background: #e8f8ef; border-color: #27ae60; color: #27ae60; }
+.eval-btn.sel-good   { background: #eef6fb; border-color: #2980b9; color: #2980b9; }
+.eval-btn.sel-fair   { background: #fef9e7; border-color: #f39c12; color: #f39c12; }
+.eval-btn.sel-poor   { background: #fdecea; border-color: #c0392b; color: #c0392b; }
+
+/* rebalance-digitalリンク */
+.digital-link-btn {
+  width: 100%; background: var(--text); color: var(--white);
+  border: none; border-radius: 8px; padding: 16px;
+  font-size: 13px; font-weight: 700; letter-spacing: .06em;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s; text-decoration: none;
+}
+.digital-link-btn:hover { background: var(--gold); }
+.digital-link-btn .arrow { font-size: 16px; }
+
+/* 保存ボタン */
+.save-btn {
+  width: 100%; background: var(--gold); color: var(--white);
+  border: none; border-radius: 8px; padding: 18px;
+  font-size: 14px; font-weight: 700; letter-spacing: .1em;
+  margin: 20px 0; transition: opacity .15s; box-shadow: var(--shadow);
+}
+.save-btn:hover { opacity: .88; }
+
+/* 削除ボタン */
+.delete-btn {
+  width: 100%; background: none; color: var(--red);
+  border: 1.5px solid #e0a0a0; border-radius: 8px; padding: 14px;
+  font-size: 12px; font-weight: 700; letter-spacing: .06em;
+  margin-bottom: 20px; transition: all .15s;
+}
+.delete-btn:hover { background: #fdecea; }
+
+.pdf-btn {
+  width: 100%; background: var(--white); color: var(--text);
+  border: 2px solid var(--gold); border-radius: 8px; padding: 16px;
+  font-size: 13px; font-weight: 700; letter-spacing: .1em;
+  margin: 20px 0 8px; transition: all .15s; box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.pdf-btn:hover { background: var(--gold); color: var(--white); }
+
+/* toast */
+#toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--text); color: var(--white);
+  padding: 12px 24px; border-radius: 24px; font-size: 13px; font-weight: 500;
+  opacity: 0; transition: all .3s; z-index: 9000; white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- 認証 -->
+<div id="auth">
+  <div class="auth-box">
+    <div class="auth-logo">ReBALANCE</div>
+    <div class="auth-rule"></div>
+    <div class="auth-sub">Digital Carte</div>
+    <div class="auth-lbl">Password</div>
+    <input type="password" class="auth-inp" id="auth-inp" placeholder="••••••••••"
+           onkeydown="if(event.key==='Enter')doAuth()">
+    <button class="auth-btn" onclick="doAuth()">入室する</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ================================================================
+     PAGE 1: 顧客一覧
+================================================================ -->
+<div id="page-list" class="page active">
+  <div class="list-header">
+    <div class="list-logo">ReBALANCE</div>
+    <div class="list-rule"></div>
+    <div class="list-sub">Digital Carte</div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="search" class="search-inp" id="search-inp"
+             placeholder="顧客名で検索…" oninput="renderList()">
+    </div>
+  </div>
+  <div class="client-list" id="client-list"></div>
+  <button class="fab" onclick="openNewClient()" title="新規顧客登録">＋</button>
+</div>
+
+<!-- ================================================================
+     PAGE 2: 顧客詳細
+================================================================ -->
+<div id="page-detail" class="page">
+  <div class="app-header">
+    <button class="back-btn" onclick="goPage('list')">←</button>
+    <div>
+      <div class="header-title" id="detail-name">顧客詳細</div>
+      <div class="header-sub" id="detail-sub"></div>
+    </div>
+    <button class="header-action" onclick="openNewRecord()">＋ 施術記録</button>
+  </div>
+  <div class="client-profile">
+    <div class="profile-avatar" id="detail-avatar" onclick="changeProfilePhoto()">
+      <div class="cam-overlay">📷</div>
+    </div>
+    <input type="file" id="profile-photo-inp" accept="image/*" style="display:none" onchange="onProfilePhoto(event)">
+    <div class="profile-info">
+      <div class="profile-name" id="detail-fullname"></div>
+      <div class="profile-detail" id="detail-info"></div>
+    </div>
+  </div>
+  <div class="record-list" id="record-list"></div>
+</div>
+
+<!-- ================================================================
+     PAGE 3: 顧客登録フォーム
+================================================================ -->
+<div id="page-new-client" class="page">
+  <div class="app-header">
+    <button class="back-btn" onclick="goPage('list')">←</button>
+    <div class="header-title">新規顧客登録</div>
+  </div>
+  <div class="form-body">
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="form-section-num">1</div>
+        <div class="form-section-title">基本情報</div>
+      </div>
+      <div class="form-section-body">
+        <div class="form-field">
+          <label class="form-label">お名前 *</label>
+          <input type="text" class="form-input" id="nc-name" placeholder="山田 花子">
+        </div>
+        <div class="form-field">
+          <label class="form-label">ふりがな</label>
+          <input type="text" class="form-input" id="nc-kana" placeholder="やまだ はなこ">
+        </div>
+        <div class="form-field">
+          <label class="form-label">電話番号</label>
+          <input type="tel" class="form-input" id="nc-tel" placeholder="090-0000-0000">
+        </div>
+        <div class="form-field">
+          <label class="form-label">メモ</label>
+          <textarea class="form-input" id="nc-memo" placeholder="アレルギー、施術上の注意など"></textarea>
+        </div>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveNewClient()">顧客を登録する</button>
+  </div>
+</div>
+
+<!-- ================================================================
+     PAGE 4: 施術記録フォーム
+================================================================ -->
+<div id="page-record" class="page">
+  <div class="app-header">
+    <button class="back-btn" onclick="goPage('detail')">←</button>
+    <div class="header-title" id="record-form-title">施術記録</div>
+  </div>
+  <div class="form-body">
+
+    <!-- ❶ ビフォー写真 -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="form-section-num" style="background:#c8a96e">❶</div>
+        <div class="form-section-title">ビフォー写真（任意）</div>
+      </div>
+      <div class="form-section-body">
+        <div class="photo-upload" id="before-upload-area">
+          <input type="file" id="before-photos" accept="image/*" multiple onchange="onBeforePhotos(event)">
+          <div class="photo-upload-icon">📷</div>
+          <div class="photo-upload-text">タップして写真を選択<br><span style="font-size:10px;opacity:.6">複数枚選択可・お客様が拒まれる場合はスキップ</span></div>
+        </div>
+        <div class="photo-preview" id="before-preview"></div>
+        <div class="form-field" style="margin-top:14px">
+          <label class="form-label">施術日</label>
+          <input type="date" class="form-input" id="rec-date">
+        </div>
+        <div class="form-field">
+          <label class="form-label">担当者</label>
+          <input type="text" class="form-input" id="rec-stylist" placeholder="担当者名">
+        </div>
+      </div>
+    </div>
+
+    <!-- ❷ 部位別薬剤選定 -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="form-section-num" style="background:#2a2a4a">❷</div>
+        <div class="form-section-title">毛髪診断 ／ 部位別 薬剤数値</div>
+      </div>
+      <div class="form-section-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.8;">
+          各部位の毛髪状態を数値で記録してください。<br>
+          （例：バージン毛→11、カラー9レベル→5、ブリーチ毛→1）
+        </p>
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">▸ お客様から見える箇所</p>
+        <div class="region-grid">
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#e8a87c"></span>顔まわり</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-face" min="1" max="15" placeholder="—"></div>
+          </div>
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#e8a87c"></span>頭頂部</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-top" min="1" max="15" placeholder="—"></div>
+          </div>
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#e8a87c"></span>もみあげ</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-temple" min="1" max="15" placeholder="—"></div>
+          </div>
+        </div>
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 10px;">▸ お客様から見えない箇所</p>
+        <div class="region-grid">
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#7aaccc"></span>後頭部</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-back" min="1" max="15" placeholder="—"></div>
+          </div>
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#7aaccc"></span>耳後ろ（左）</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-ear-l" min="1" max="15" placeholder="—"></div>
+          </div>
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#7aaccc"></span>耳後ろ（右）</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-ear-r" min="1" max="15" placeholder="—"></div>
+          </div>
+          <div class="region-card">
+            <div class="region-label"><span class="region-dot" style="background:#7aaccc"></span>えりあし</div>
+            <div class="region-input-wrap"><input type="number" class="region-num-input" id="r-nape" min="1" max="15" placeholder="—"></div>
+          </div>
+        </div>
+
+        <!-- ReBALANCE digital リンク -->
+        <div style="margin-top:18px;padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+          <p style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.8;">数値を確認したら、薬剤レシピを計算してください</p>
+          <a href="https://zeelowbox.github.io/rebalance-digital/" target="_blank" class="digital-link-btn">
+            <span>ReBALANCE Digital で薬剤レシピを計算</span>
+            <span class="arrow">↗</span>
+          </a>
+        </div>
+
+        <div class="form-field" style="margin-top:14px">
+          <label class="form-label">使用レシピメモ（計算結果を記録）</label>
+          <textarea class="form-input" id="rec-recipe" placeholder="例）POWER DOWN Black&#10;総量 100g / 目標 3.2%&#10;→ Pale Yellow 42g / ミックス 58g"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ❸ 部位別評価 -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="form-section-num" style="background:#27ae60">❸</div>
+        <div class="form-section-title">施術後 部位別評価</div>
+      </div>
+      <div class="form-section-body">
+        <p style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.8;">各部位の仕上がりを評価してください</p>
+        <div class="eval-grid" id="eval-grid"></div>
+      </div>
+    </div>
+
+    <!-- ❹ アフター写真＋備考 -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="form-section-num" style="background:#c8a96e">❹</div>
+        <div class="form-section-title">アフター写真＋備考</div>
+      </div>
+      <div class="form-section-body">
+        <div class="photo-upload" id="after-upload-area">
+          <input type="file" id="after-photos" accept="image/*" multiple onchange="onAfterPhotos(event)">
+          <div class="photo-upload-icon">✨</div>
+          <div class="photo-upload-text">アフター写真を追加（任意）</div>
+        </div>
+        <div class="photo-preview" id="after-preview"></div>
+        <div class="form-field" style="margin-top:14px">
+          <label class="form-label">仕上げトリートメント（任意）</label>
+          <input type="text" class="form-input" id="rec-treatment" placeholder="例）Rectus SH トリートメント 20g">
+        </div>
+        <div class="form-field">
+          <label class="form-label">ホームケア剤 ご購入品（任意）</label>
+          <textarea class="form-input" id="rec-homecare" placeholder="例）ReBALANCE ホームケアシャンプー 300mL&#10;トリートメントマスク 200g"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">備考・気づき・次回への申し送り</label>
+          <textarea class="form-input" id="rec-note" placeholder="施術中の気づき、お客様の感想、次回の方針など" style="min-height:100px"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ❺ 次回アフター（後日記録用） -->
+    <div class="form-section">
+      <div class="form-section-header">
+        <div class="form-section-num" style="background:#8a6a10">❺</div>
+        <div class="form-section-title">次回来店時アフター（後日追記）</div>
+      </div>
+      <div class="form-section-body">
+        <div class="form-field">
+          <label class="form-label">経過観察メモ（後日記入）</label>
+          <textarea class="form-input" id="rec-followup" placeholder="〇週間後の状態、持続性、お客様の声など"></textarea>
+        </div>
+        <div class="photo-upload">
+          <input type="file" id="followup-photos" accept="image/*" multiple onchange="onFollowupPhotos(event)">
+          <div class="photo-upload-icon">📅</div>
+          <div class="photo-upload-text">経過写真を追加（任意）</div>
+        </div>
+        <div class="photo-preview" id="followup-preview"></div>
+      </div>
+    </div>
+
+    <button class="pdf-btn" onclick="exportPDF()">📄 このカルテをPDFで出力（LINE共有）</button>
+    <button class="save-btn" onclick="saveRecord()">この施術記録を保存</button>
+    <button class="delete-btn" id="delete-record-btn" onclick="deleteRecord()" style="display:none">この記録を削除する</button>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// データ管理
+// ================================================================
+const STORE_KEY = 'rb_carte_v1';
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { clients: [] }; }
+  catch(e) { return { clients: [] }; }
+}
+function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ================================================================
+// 状態
+// ================================================================
+let currentClientId = null;
+let currentRecordId = null;
+let editingRecord = false;
+let beforePhotosB64 = [];
+let afterPhotosB64  = [];
+let followupPhotosB64 = [];
+
+const REGIONS = [
+  { id: 'r-face',  label: '顔まわり' },
+  { id: 'r-top',   label: '頭頂部' },
+  { id: 'r-temple',label: 'もみあげ' },
+  { id: 'r-back',  label: '後頭部' },
+  { id: 'r-ear-l', label: '耳後ろ（左）' },
+  { id: 'r-ear-r', label: '耳後ろ（右）' },
+  { id: 'r-nape',  label: 'えりあし' },
+];
+
+// ================================================================
+// 認証
+// ================================================================
+function doAuth() {
+  if (document.getElementById('auth-inp').value === 'imu1120box') {
+    const o = document.getElementById('auth');
+    o.style.opacity = '0';
+    setTimeout(() => o.style.display = 'none', 400);
+    renderList();
+  } else {
+    const e = document.getElementById('auth-err');
+    e.textContent = 'パスワードが正しくありません';
+    document.getElementById('auth-inp').value = '';
+    setTimeout(() => e.textContent = '', 2500);
+  }
+}
+document.getElementById('auth-inp').addEventListener('keydown', e => { if(e.key==='Enter') doAuth(); });
+
+// ================================================================
+// ページ遷移
+// ================================================================
+function goPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ================================================================
+// 顧客一覧
+// ================================================================
+function renderList() {
+  const data = load();
+  const q = (document.getElementById('search-inp').value || '').trim().toLowerCase();
+  const clients = data.clients.filter(c =>
+    !q || c.name.toLowerCase().includes(q) || (c.kana || '').toLowerCase().includes(q)
+  );
+  const el = document.getElementById('client-list');
+  if (clients.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">✂️</div><div class="empty-text">顧客が登録されていません<br>右下の ＋ ボタンから登録してください</div></div>`;
+    return;
+  }
+  el.innerHTML = clients.map(c => {
+    const records = (c.records || []).length;
+    const last = records > 0 ? c.records[c.records.length-1].date : '—';
+    const initials = c.name.slice(0,1);
+    const avatarHtml = c.photoB64
+      ? `<img src="${c.photoB64}" alt="">`
+      : initials;
+    return `
+      <div class="client-card" onclick="openClient('${c.id}')">
+        <div class="client-avatar">${avatarHtml}</div>
+        <div class="client-info">
+          <div class="client-name">${c.name}</div>
+          <div class="client-meta">
+            <span>${c.kana || ''}</span>
+            <span>最終：${last}</span>
+          </div>
+        </div>
+        <div class="client-count">${records}件</div>
+        <div class="client-chevron">›</div>
+      </div>`;
+  }).join('');
+}
+
+// ================================================================
+// 顧客登録
+// ================================================================
+function openNewClient() {
+  ['nc-name','nc-kana','nc-tel','nc-memo'].forEach(id => document.getElementById(id).value = '');
+  goPage('new-client');
+}
+
+function saveNewClient() {
+  const name = document.getElementById('nc-name').value.trim();
+  if (!name) { toast('お名前を入力してください'); return; }
+  const data = load();
+  const client = {
+    id: uid(), name,
+    kana:  document.getElementById('nc-kana').value.trim(),
+    tel:   document.getElementById('nc-tel').value.trim(),
+    memo:  document.getElementById('nc-memo').value.trim(),
+    records: [],
+    createdAt: new Date().toISOString(),
+  };
+  data.clients.unshift(client);
+  save(data);
+  toast('顧客を登録しました');
+  renderList();
+  goPage('list');
+}
+
+// ================================================================
+// 顧客詳細
+// ================================================================
+function openClient(cid) {
+  currentClientId = cid;
+  const data = load();
+  const c = data.clients.find(x => x.id === cid);
+  if (!c) return;
+
+  document.getElementById('detail-name').textContent = c.name;
+  document.getElementById('detail-sub').textContent = c.kana || '';
+  document.getElementById('detail-fullname').textContent = c.name;
+  document.getElementById('detail-info').innerHTML =
+    [c.tel && `📞 ${c.tel}`, c.memo && `📝 ${c.memo}`].filter(Boolean).join('<br>') || '—';
+
+  const av = document.getElementById('detail-avatar');
+  av.innerHTML = '<div class="cam-overlay">📷</div>';
+  if (c.photoB64) {
+    const img = document.createElement('img');
+    img.src = c.photoB64;
+    av.insertBefore(img, av.firstChild);
+  } else {
+    av.insertAdjacentHTML('afterbegin', `<span style="font-family:var(--serif);font-size:28px;color:var(--muted)">${c.name.slice(0,1)}</span>`);
+  }
+
+  renderRecords(c);
+  goPage('detail');
+}
+
+function changeProfilePhoto() {
+  document.getElementById('profile-photo-inp').click();
+}
+
+function onProfilePhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = load();
+    const c = data.clients.find(x => x.id === currentClientId);
+    if (!c) return;
+    c.photoB64 = ev.target.result;
+    save(data);
+    openClient(currentClientId);
+    toast('写真を更新しました');
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderRecords(c) {
+  const el = document.getElementById('record-list');
+  const records = (c.records || []).slice().reverse();
+  if (records.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">施術記録がありません<br>右上の ＋施術記録 から追加してください</div></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="record-section-title">施術記録（${records.length}件）</div>` +
+    records.map(r => {
+      const mode = r.recipe ? (r.recipe.includes('UP') ? 'pu' : 'pd') : '';
+      const badge = mode === 'pu'
+        ? '<span class="badge badge-pu">POWER UP</span>'
+        : mode === 'pd' ? '<span class="badge badge-pd">POWER DOWN</span>' : '';
+      return `
+        <div class="record-card" onclick="openRecord('${r.id}')">
+          <div class="record-card-header">
+            <span class="record-date">📅 ${r.date || '—'}</span>
+            ${badge}
+          </div>
+          <div class="record-card-preview">
+            ${r.stylist ? `担当：${r.stylist}　` : ''}${r.note ? r.note.slice(0,40) + '…' : 'タップして詳細を見る'}
+          </div>
+        </div>`;
+    }).join('');
+}
+
+// ================================================================
+// 施術記録
+// ================================================================
+function buildEvalGrid() {
+  const el = document.getElementById('eval-grid');
+  el.innerHTML = REGIONS.map(r => `
+    <div class="eval-row">
+      <div class="eval-row-label">${r.label}</div>
+      <div class="eval-btns">
+        <button class="eval-btn" data-region="${r.id}" data-val="great" onclick="setEval(this)">◎</button>
+        <button class="eval-btn" data-region="${r.id}" data-val="good"  onclick="setEval(this)">○</button>
+        <button class="eval-btn" data-region="${r.id}" data-val="fair"  onclick="setEval(this)">△</button>
+        <button class="eval-btn" data-region="${r.id}" data-val="poor"  onclick="setEval(this)">×</button>
+      </div>
+    </div>`).join('');
+}
+
+function setEval(btn) {
+  const region = btn.dataset.region;
+  document.querySelectorAll(`.eval-btn[data-region="${region}"]`).forEach(b => {
+    b.className = 'eval-btn';
+  });
+  btn.classList.add('sel-' + btn.dataset.val);
+}
+
+function getEvals() {
+  const result = {};
+  REGIONS.forEach(r => {
+    const sel = document.querySelector(`.eval-btn[data-region="${r.id}"][class*="sel-"]`);
+    result[r.id] = sel ? sel.dataset.val : null;
+  });
+  return result;
+}
+
+function setEvalsFromData(evals) {
+  if (!evals) return;
+  REGIONS.forEach(r => {
+    const val = evals[r.id];
+    if (val) {
+      const btn = document.querySelector(`.eval-btn[data-region="${r.id}"][data-val="${val}"]`);
+      if (btn) btn.classList.add('sel-' + val);
+    }
+  });
+}
+
+function openNewRecord() {
+  editingRecord = false;
+  currentRecordId = null;
+  beforePhotosB64 = []; afterPhotosB64 = []; followupPhotosB64 = [];
+  ['before-preview','after-preview','followup-preview'].forEach(id => document.getElementById(id).innerHTML = '');
+  ['rec-date','rec-stylist','rec-recipe','rec-treatment','rec-homecare','rec-note','rec-followup'].forEach(id => document.getElementById(id).value = '');
+  REGIONS.forEach(r => { const el = document.getElementById(r.id); if(el) el.value = ''; });
+  document.getElementById('rec-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('record-form-title').textContent = '新規施術記録';
+  document.getElementById('delete-record-btn').style.display = 'none';
+  buildEvalGrid();
+  goPage('record');
+}
+
+function openRecord(rid) {
+  const data = load();
+  const c = data.clients.find(x => x.id === currentClientId);
+  if (!c) return;
+  const r = (c.records || []).find(x => x.id === rid);
+  if (!r) return;
+
+  currentRecordId = rid;
+  editingRecord = true;
+  beforePhotosB64 = r.beforePhotos || [];
+  afterPhotosB64  = r.afterPhotos  || [];
+  followupPhotosB64 = r.followupPhotos || [];
+
+  document.getElementById('rec-date').value    = r.date || '';
+  document.getElementById('rec-stylist').value = r.stylist || '';
+  document.getElementById('rec-recipe').value  = r.recipe || '';
+  document.getElementById('rec-note').value    = r.note || '';
+  document.getElementById('rec-followup').value  = r.followup  || '';
+  document.getElementById('rec-treatment').value = r.treatment || '';
+  document.getElementById('rec-homecare').value  = r.homecare  || '';
+
+  REGIONS.forEach(reg => {
+    const el = document.getElementById(reg.id);
+    if (el) el.value = (r.regions && r.regions[reg.id]) ? r.regions[reg.id] : '';
+  });
+
+  buildEvalGrid();
+  setEvalsFromData(r.evals);
+
+  // 写真プレビュー
+  renderPhotoPreview('before-preview', beforePhotosB64, beforePhotosB64);
+  renderPhotoPreview('after-preview',  afterPhotosB64,  afterPhotosB64);
+  renderPhotoPreview('followup-preview', followupPhotosB64, followupPhotosB64);
+
+  document.getElementById('record-form-title').textContent = '施術記録を編集';
+  document.getElementById('delete-record-btn').style.display = 'block';
+  goPage('record');
+}
+
+function saveRecord() {
+  const data = load();
+  const c = data.clients.find(x => x.id === currentClientId);
+  if (!c) return;
+
+  const regions = {};
+  REGIONS.forEach(r => {
+    const el = document.getElementById(r.id);
+    if (el && el.value) regions[r.id] = el.value;
+  });
+
+  const record = {
+    id:      editingRecord ? currentRecordId : uid(),
+    date:    document.getElementById('rec-date').value,
+    stylist: document.getElementById('rec-stylist').value.trim(),
+    recipe:  document.getElementById('rec-recipe').value.trim(),
+    note:    document.getElementById('rec-note').value.trim(),
+    followup:  document.getElementById('rec-followup').value.trim(),
+    treatment: document.getElementById('rec-treatment').value.trim(),
+    homecare:  document.getElementById('rec-homecare').value.trim(),
+    regions, evals: getEvals(),
+    beforePhotos:   beforePhotosB64,
+    afterPhotos:    afterPhotosB64,
+    followupPhotos: followupPhotosB64,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (!c.records) c.records = [];
+  if (editingRecord) {
+    const idx = c.records.findIndex(r => r.id === currentRecordId);
+    if (idx >= 0) c.records[idx] = record; else c.records.push(record);
+  } else {
+    c.records.push(record);
+  }
+  save(data);
+  toast('施術記録を保存しました');
+  renderRecords(c);
+  goPage('detail');
+}
+
+function deleteRecord() {
+  if (!confirm('この施術記録を削除しますか？')) return;
+  const data = load();
+  const c = data.clients.find(x => x.id === currentClientId);
+  if (!c) return;
+  c.records = (c.records || []).filter(r => r.id !== currentRecordId);
+  save(data);
+  toast('削除しました');
+  renderRecords(c);
+  goPage('detail');
+}
+
+// ================================================================
+// 写真処理
+// ================================================================
+function readFiles(files, arr, previewId) {
+  const promises = Array.from(files).map(f => new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result);
+    reader.readAsDataURL(f);
+  }));
+  Promise.all(promises).then(results => {
+    results.forEach(b64 => arr.push(b64));
+    renderPhotoPreview(previewId, arr, arr);
+  });
+}
+
+function renderPhotoPreview(previewId, arr, ref) {
+  const el = document.getElementById(previewId);
+  if (!el) return;
+  el.innerHTML = arr.map((b64, i) => `
+    <div class="photo-thumb">
+      <img src="${b64}" alt="">
+      <button class="photo-del" onclick="removePhoto('${previewId}',${i})">×</button>
+    </div>`).join('');
+}
+
+function removePhoto(previewId, idx) {
+  const map = {
+    'before-preview': beforePhotosB64,
+    'after-preview':  afterPhotosB64,
+    'followup-preview': followupPhotosB64,
+  };
+  const arr = map[previewId];
+  if (arr) { arr.splice(idx, 1); renderPhotoPreview(previewId, arr, arr); }
+}
+
+function onBeforePhotos(e)   { readFiles(e.target.files, beforePhotosB64,   'before-preview'); }
+function onAfterPhotos(e)    { readFiles(e.target.files, afterPhotosB64,    'after-preview'); }
+function onFollowupPhotos(e) { readFiles(e.target.files, followupPhotosB64, 'followup-preview'); }
+
+
+// ================================================================
+// PDF出力（印刷ダイアログ / LINE共有）
+// ================================================================
+function exportPDF() {
+  const data = load();
+  const c = data.clients.find(x => x.id === currentClientId);
+  if (!c) return;
+
+  // 現在のフォームから値を取得（未保存でも出力可能）
+  const rec = {
+    date:      document.getElementById('rec-date').value,
+    stylist:   document.getElementById('rec-stylist').value,
+    recipe:    document.getElementById('rec-recipe').value,
+    treatment: document.getElementById('rec-treatment').value,
+    homecare:  document.getElementById('rec-homecare').value,
+    note:      document.getElementById('rec-note').value,
+    followup:  document.getElementById('rec-followup').value,
+    regions:   {},
+    evals:     getEvals(),
+    beforePhotos: beforePhotosB64,
+    afterPhotos:  afterPhotosB64,
+  };
+  REGIONS.forEach(r => {
+    const el = document.getElementById(r.id);
+    if (el && el.value) rec.regions[r.id] = el.value;
+  });
+
+  const evalMap = {great:'◎ 適正',good:'○ 良好',fair:'△ やや不足',poor:'× 要改善'};
+
+  const regionRows = REGIONS.map(r => {
+    const val = rec.regions[r.id] || '—';
+    const ev  = rec.evals[r.id] ? evalMap[rec.evals[r.id]] : '—';
+    const evColor = {great:'#27ae60',good:'#2980b9',fair:'#f39c12',poor:'#c0392b'}[rec.evals[r.id]] || '#999';
+    return `<tr>
+      <td style="padding:7px 12px;border-bottom:1px solid #eee;font-size:13px;">${r.label}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid #eee;font-family:monospace;font-size:15px;font-weight:700;text-align:center;">${val}</td>
+      <td style="padding:7px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:${evColor};text-align:center;">${ev}</td>
+    </tr>`;
+  }).join('');
+
+  const beforeImgs = rec.beforePhotos.map(b => `<img src="${b}" style="width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #eee;margin:4px;">`).join('');
+  const afterImgs  = rec.afterPhotos.map(b  => `<img src="${b}" style="width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #eee;margin:4px;">`).join('');
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<title>ReBALANCE カルテ - ${c.name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Noto Sans JP',sans-serif; color:#1a1a1a; background:#fff; padding:32px; max-width:700px; margin:0 auto; }
+  .logo { font-size:24px; font-weight:300; letter-spacing:.18em; margin-bottom:2px; }
+  .rule { width:36px; height:1.5px; background:#c8a96e; margin:6px 0 4px; }
+  .sub  { font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:#aaa; margin-bottom:24px; }
+  .section { margin-bottom:20px; }
+  .section-title { font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#aaa; margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:6px; }
+  .client-name { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .meta { font-size:12px; color:#888; margin-bottom:2px; }
+  table { width:100%; border-collapse:collapse; }
+  .recipe-box { background:#f8f6f2; border-left:3px solid #c8a96e; border-radius:4px; padding:12px 16px; font-size:12px; line-height:1.8; white-space:pre-wrap; }
+  .care-box   { background:#f0f8f0; border-left:3px solid #27ae60; border-radius:4px; padding:12px 16px; font-size:12px; line-height:1.8; }
+  .note-box   { background:#f8f6f2; border-radius:4px; padding:12px 16px; font-size:12px; line-height:1.8; white-space:pre-wrap; }
+  .link-btn   { display:inline-block; background:#1a1a1a; color:#fff; padding:10px 20px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.1em; text-decoration:none; margin-top:8px; }
+  .photo-row  { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .footer     { margin-top:32px; padding-top:16px; border-top:1px solid #eee; font-size:10px; color:#bbb; text-align:center; }
+  @media print { body { padding:16px; } .no-print { display:none; } }
+</style>
+</head><body>
+  <div class="logo">ReBALANCE</div>
+  <div class="rule"></div>
+  <div class="sub">Digital Carte — 施術記録</div>
+
+  <div class="section">
+    <div class="section-title">お客様情報</div>
+    <div class="client-name">${c.name}</div>
+    <div class="meta">${c.kana || ''}</div>
+    ${c.tel ? `<div class="meta">📞 ${c.tel}</div>` : ''}
+    ${c.memo ? `<div class="meta">📝 ${c.memo}</div>` : ''}
+  </div>
+
+  <div class="section">
+    <div class="section-title">施術情報</div>
+    <div class="meta">📅 施術日：<strong>${rec.date || '—'}</strong>　　担当：<strong>${rec.stylist || '—'}</strong></div>
+  </div>
+
+  ${(beforeImgs || afterImgs) ? `
+  <div class="section">
+    <div class="section-title">ビフォー / アフター写真</div>
+    ${beforeImgs ? `<p style="font-size:11px;color:#aaa;margin-bottom:4px;">ビフォー</p><div class="photo-row">${beforeImgs}</div>` : ''}
+    ${afterImgs  ? `<p style="font-size:11px;color:#aaa;margin:8px 0 4px;">アフター</p><div class="photo-row">${afterImgs}</div>` : ''}
+  </div>` : ''}
+
+  <div class="section">
+    <div class="section-title">部位別 毛髪診断・評価</div>
+    <table>
+      <thead><tr>
+        <th style="padding:7px 12px;background:#f8f6f2;font-size:10px;letter-spacing:.1em;text-align:left;">部位</th>
+        <th style="padding:7px 12px;background:#f8f6f2;font-size:10px;letter-spacing:.1em;text-align:center;">薬剤数値</th>
+        <th style="padding:7px 12px;background:#f8f6f2;font-size:10px;letter-spacing:.1em;text-align:center;">施術評価</th>
+      </tr></thead>
+      <tbody>${regionRows}</tbody>
+    </table>
+  </div>
+
+  ${rec.recipe ? `
+  <div class="section">
+    <div class="section-title">薬剤レシピ</div>
+    <div class="recipe-box">${rec.recipe}</div>
+    <a href="https://zeelowbox.github.io/rebalance-digital/" class="link-btn no-print" target="_blank">ReBALANCE Digital で確認 ↗</a>
+  </div>` : ''}
+
+  ${rec.treatment ? `
+  <div class="section">
+    <div class="section-title">仕上げトリートメント</div>
+    <div class="care-box">🌿 ${rec.treatment}</div>
+  </div>` : ''}
+
+  ${rec.homecare ? `
+  <div class="section">
+    <div class="section-title">ホームケア ご購入品</div>
+    <div class="care-box" style="white-space:pre-wrap;">🛍 ${rec.homecare}</div>
+  </div>` : ''}
+
+  ${rec.note ? `
+  <div class="section">
+    <div class="section-title">備考・次回へのご提案</div>
+    <div class="note-box">${rec.note}</div>
+  </div>` : ''}
+
+  ${rec.followup ? `
+  <div class="section">
+    <div class="section-title">経過観察メモ</div>
+    <div class="note-box">${rec.followup}</div>
+  </div>` : ''}
+
+  <div class="footer">
+    ReBALANCE Digital Carte　／　このカルテはサロンからお客様へのご提供資料です。
+  </div>
+
+  <div class="no-print" style="text-align:center;margin-top:28px;">
+    <button onclick="window.print()" style="background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:14px 36px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px;">🖨 印刷 / PDF保存</button>
+    <button onclick="window.close()" style="background:#eee;color:#555;border:none;border-radius:6px;padding:14px 24px;font-size:13px;cursor:pointer;">閉じる</button>
+    <p style="margin-top:12px;font-size:11px;color:#aaa;">「PDF保存」を選ぶとLINEで送れるPDFファイルになります</p>
+  </div>
+</body></html>`);
+  win.document.close();
+}
+
+// ================================================================
+// Toast
+// ================================================================
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ================================================================
+// 初期化
+// ================================================================
+renderList();
+</script>
+</body>
+</html>
