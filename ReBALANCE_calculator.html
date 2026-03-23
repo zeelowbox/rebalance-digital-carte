@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ReBALANCE — 配合計算</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:#f8f6f2; color:#1a1a1a; font-family:'Noto Sans JP',sans-serif; min-height:100vh; padding-bottom:80px; }
+
+/* ── 認証 ── */
+#auth-overlay { position:fixed; inset:0; background:#f8f6f2; display:flex; align-items:center; justify-content:center; z-index:9999; transition:opacity 0.4s; }
+.auth-box { width:min(340px,90vw); padding:52px 44px 44px; border:1px solid #d8d2c4; border-radius:4px; background:#fff; display:flex; flex-direction:column; align-items:center; box-shadow:0 8px 40px rgba(0,0,0,0.08); }
+.auth-logo { font-family:'Cormorant Garamond',serif; font-size:30px; font-weight:300; letter-spacing:.18em; margin-bottom:4px; }
+.auth-rule { width:40px; height:1px; background:#c8a96e; margin:8px 0 6px; }
+.auth-sub  { font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:#999; margin-bottom:32px; }
+.auth-lbl  { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#999; align-self:flex-start; margin-bottom:7px; }
+.auth-inp  { width:100%; background:#f8f6f2; border:1.5px solid #d8d2c4; border-radius:3px; padding:12px 14px; font-family:'DM Mono',monospace; font-size:16px; outline:none; letter-spacing:.1em; margin-bottom:14px; transition:border-color .15s; color:#1a1a1a; }
+.auth-inp:focus { border-color:#c8a96e; }
+.auth-btn  { width:100%; background:#1a1a1a; color:#fff; border:none; border-radius:3px; padding:14px; font-size:12px; font-weight:700; letter-spacing:.14em; cursor:pointer; transition:background .15s; margin-bottom:12px; }
+.auth-btn:hover { background:#c8a96e; }
+.auth-err  { font-size:11px; color:#c0392b; height:14px; }
+
+/* ── ヘッダー ── */
+header { background:#fff; border-bottom:1px solid #e0dbd0; padding:28px 20px 20px; text-align:center; }
+.header-logo { font-family:'Cormorant Garamond',serif; font-size:34px; font-weight:300; letter-spacing:.18em; margin-bottom:6px; }
+.header-rule { width:44px; height:1.5px; background:#c8a96e; margin:0 auto 7px; }
+.header-sub  { font-size:9px; letter-spacing:.22em; text-transform:uppercase; color:#aaa; }
+
+/* ── タブ ── */
+.tabs { background:#fff; border-bottom:2px solid #e0dbd0; display:flex; justify-content:center; position:sticky; top:0; z-index:100; }
+.tab-btn { background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; color:#bbb; font-family:'Noto Sans JP',sans-serif; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:14px 24px; cursor:pointer; transition:all .2s; text-align:center; line-height:1.4; }
+.tab-btn.active { color:#1a1a1a; border-bottom-color:#c8a96e; }
+.tab-btn:hover:not(.active) { color:#555; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ── レイアウト ── */
+.main { max-width:640px; margin:0 auto; padding:24px 16px 0; }
+.sec-label { font-size:10px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:#aaa; margin-bottom:12px; display:flex; align-items:center; gap:10px; }
+.sec-label::after { content:''; flex:1; height:1px; background:#e0dbd0; }
+
+/* ── 薬剤カード ── */
+.drug-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:24px; }
+@media(max-width:480px){ .drug-cards { grid-template-columns:1fr; } }
+.drug-card { background:#fff; border:2px solid #e0dbd0; border-radius:8px; padding:16px 14px 14px; cursor:pointer; transition:all .18s; position:relative; }
+.drug-card:hover { border-color:#c8a96e; transform:translateY(-2px); box-shadow:0 6px 20px rgba(200,169,110,.18); }
+.drug-card.selected { border-color:var(--cc,#1a1a1a); box-shadow:0 6px 24px rgba(0,0,0,.14); }
+.drug-card.selected::after { content:'✓ 選択中'; position:absolute; top:8px; right:10px; font-size:9px; font-weight:700; color:var(--cc,#1a1a1a); background:rgba(0,0,0,.06); border-radius:20px; padding:2px 7px; }
+.drug-card-name { font-family:'Cormorant Garamond',serif; font-size:18px; font-weight:400; color:var(--cc,#1a1a1a); margin-bottom:3px; line-height:1.2; }
+.drug-card-sub  { font-size:9px; color:#aaa; margin-bottom:5px; letter-spacing:.03em; }
+.drug-card-conc { font-family:'DM Mono',monospace; font-size:10px; color:#aaa; }
+.drug-card-conc strong { color:#c0392b; font-weight:500; }
+.drug-card-total { font-family:'DM Mono',monospace; font-size:12px; font-weight:700; color:var(--cc,#1a1a1a); margin-top:4px; }
+
+/* ── 比率入力 ── */
+.ratio-row { display:flex; align-items:center; gap:8px; background:#fff; border:2px solid #e0dbd0; border-radius:8px; padding:14px 16px; margin-bottom:8px; }
+.ratio-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.ratio-name { flex:1; font-size:12px; font-weight:700; }
+.ratio-inp { width:56px; background:#f8f6f2; border:1.5px solid #e0dbd0; border-radius:4px; padding:8px; font-family:'DM Mono',monospace; font-size:18px; font-weight:500; text-align:center; outline:none; transition:border-color .15s; color:#1a1a1a; }
+.ratio-inp:focus { border-color:#c8a96e; }
+.ratio-colon { font-family:'DM Mono',monospace; font-size:16px; color:#ccc; }
+
+/* ── 入力フィールド ── */
+.field { background:#fff; border:2px solid #e0dbd0; border-radius:8px; padding:16px 18px 14px; margin-bottom:12px; transition:border-color .15s; }
+.field:focus-within { border-color:#c8a96e; box-shadow:0 0 0 3px rgba(200,169,110,.1); }
+.field label { display:block; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#aaa; margin-bottom:7px; }
+.field-row { display:flex; align-items:baseline; gap:6px; }
+.field-row input { flex:1; background:none; border:none; color:#1a1a1a; font-family:'DM Mono',monospace; font-size:26px; font-weight:500; outline:none; min-width:0; }
+.field-row input::placeholder { color:#ddd; }
+.field-unit { font-family:'DM Mono',monospace; font-size:13px; color:#ccc; }
+
+.field-optional { background:#f8f6f2; border:1.5px solid #e0dbd0; border-radius:8px; padding:14px 18px 12px; margin-bottom:12px; }
+.field-optional label { display:block; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#bbb; margin-bottom:7px; }
+.field-optional .field-row input { font-size:22px; color:#888; }
+
+/* ── 結果 ── */
+.result-panel { border:2px solid #e0dbd0; border-radius:10px; overflow:hidden; margin-bottom:24px; opacity:0; transform:translateY(8px); transition:opacity .3s,transform .3s; display:none; }
+.result-panel.visible { display:block; }
+.result-panel.show { opacity:1; transform:translateY(0); }
+.result-panel.has-error { border-color:#e0a0a0; }
+.error-box { background:#fff5f5; border-top:3px solid #e07070; padding:16px 20px; font-size:12px; color:#c0392b; line-height:1.7; }
+
+/* ヒーロー */
+.result-hero { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:#e0dbd0; }
+@media(max-width:420px){ .result-hero { grid-template-columns:1fr; } }
+.rhc { background:#fff; padding:20px 22px; }
+.rhc-label { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#aaa; margin-bottom:6px; }
+.rhc-val { font-family:'DM Mono',monospace; font-size:34px; font-weight:500; line-height:1; }
+.rhc-unit { font-size:13px; color:#bbb; margin-left:4px; }
+
+/* 内訳 */
+.result-body { background:#faf9f6; }
+.rrow { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; border-bottom:1px solid #ede8de; font-size:12px; }
+.rrow:last-child { border-bottom:none; }
+.rrow-label { color:#999; }
+.rrow-val { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; }
+
+/* 成分グリッド */
+.conc-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; background:#e0dbd0; border-top:2px solid #e0dbd0; }
+@media(max-width:420px){ .conc-grid { grid-template-columns:1fr; } }
+.ci { background:#fff; padding:12px 16px; }
+.ci-label { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:5px; }
+.ci-val { font-family:'DM Mono',monospace; font-size:18px; font-weight:500; }
+.ci-unit { font-size:10px; color:#bbb; margin-left:2px; }
+
+/* スペック */
+.spec { background:#fff; border:1px solid #e0dbd0; border-left:3px solid #c8a96e; border-radius:4px; padding:12px 16px; margin-bottom:20px; font-size:11px; color:#888; line-height:1.9; }
+.spec strong { color:#1a1a1a; font-weight:700; font-family:'DM Mono',monospace; font-size:11px; }
+.note { font-size:10px; color:#bbb; line-height:1.9; border-top:1px solid #e0dbd0; padding-top:16px; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<!-- 認証 -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-logo">ReBALANCE</div>
+    <div class="auth-rule"></div>
+    <div class="auth-sub">Reducer Concentration Calculator</div>
+    <div class="auth-lbl">Password</div>
+    <input type="password" class="auth-inp" id="auth-inp" placeholder="••••••••••"
+           onkeydown="if(event.key==='Enter')checkAuth()">
+    <button class="auth-btn" onclick="checkAuth()">入室する</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<header>
+  <div class="header-logo">ReBALANCE</div>
+  <div class="header-rule"></div>
+  <div class="header-sub">Reducer Concentration Calculator</div>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('down',this)">↓ POWER DOWN<br><span style="font-size:9px;opacity:.7;font-weight:400">伸び重視</span></button>
+  <button class="tab-btn" onclick="switchTab('up',this)">↑ POWER UP<br><span style="font-size:9px;opacity:.7;font-weight:400">質感重視</span></button>
+</div>
+
+<!-- ================================================================
+     POWER DOWN（伸び重視）
+================================================================ -->
+<div id="tab-down" class="tab-content active">
+  <div class="main">
+    <div class="sec-label" style="margin-top:8px">ベース剤を選択</div>
+    <div class="drug-cards">
+      <div class="drug-card selected" style="--cc:#2a2a4a" onclick="selectBase('black',this)">
+        <div class="drug-card-name">Black</div>
+        <div class="drug-card-sub">Rectus SH</div>
+        <div class="drug-card-conc">TGA <strong>10.7%</strong></div>
+        <div class="drug-card-total">合計 10.7%</div>
+      </div>
+      <div class="drug-card" style="--cc:#7a4a1a" onclick="selectBase('brown',this)">
+        <div class="drug-card-name">Brown</div>
+        <div class="drug-card-sub">Rectus M</div>
+        <div class="drug-card-conc">TGA <strong>9.0%</strong></div>
+        <div class="drug-card-total">合計 9.0%</div>
+      </div>
+      <div class="drug-card" style="--cc:#8a6a10" onclick="selectBase('lightbrown',this)">
+        <div class="drug-card-name">Light Brown</div>
+        <div class="drug-card-sub">ぷるぷるH</div>
+        <div class="drug-card-conc">TGA <strong>7.0%</strong></div>
+        <div class="drug-card-total">合計 7.0%</div>
+      </div>
+    </div>
+
+    <div class="sec-label">入力</div>
+    <div class="field">
+      <label>仕上がり総量</label>
+      <div class="field-row">
+        <input type="number" id="pd-total" placeholder="100" min="1" oninput="calcPD()">
+        <span class="field-unit">g</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>目標 総還元剤濃度 <span style="font-size:9px;color:#c8a96e;font-weight:400;letter-spacing:.04em;">（0.3% 〜 13.75%）</span></label>
+      <div class="field-row">
+        <input type="number" id="pd-target" placeholder="2.500" step="0.001" oninput="calcPD()">
+        <span class="field-unit">%</span>
+      </div>
+    </div>
+
+    <div class="sec-label">計算結果</div>
+    <div class="result-panel" id="pd-panel">
+      <div id="pd-err" class="error-box" style="display:none"></div>
+      <div id="pd-ok">
+        <div class="result-hero">
+          <div class="rhc">
+            <div class="rhc-label">Pale Yellow 使用量</div>
+            <div class="rhc-val" style="color:#3a6a2a"><span id="pd-py">—</span><span class="rhc-unit">g</span></div>
+          </div>
+          <div class="rhc">
+            <div class="rhc-label">A ＋ B ミックス量</div>
+            <div class="rhc-val" id="pd-mix-el" style="color:#2a2a4a"><span id="pd-mix">—</span><span class="rhc-unit">g</span></div>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="rrow" style="background:#faf8f5;">
+            <span class="rrow-label" id="pd-albl" style="font-weight:700;">A. Black（Rectus SH）</span>
+            <span class="rrow-val" id="pd-a" style="color:#2a2a4a;font-size:16px;">—</span>
+          </div>
+          <div class="rrow" style="background:#f5f8fc;">
+            <span class="rrow-label" style="font-weight:700;">B. Booster <span style="font-size:9px;color:#aaa;font-weight:400;">（Aの20%）</span></span>
+            <span class="rrow-val" id="pd-b" style="color:#2980b9;font-size:16px;">—</span>
+          </div>
+          <div class="rrow" style="background:#f5faf5;">
+            <span class="rrow-label" style="font-weight:700;">C. Pale Yellow <span style="font-size:9px;color:#aaa;font-weight:400;">（希釈）</span></span>
+            <span class="rrow-val" id="pd-py2" style="color:#3a6a2a;font-size:16px;">—</span>
+          </div>
+          <div class="rrow"><span class="rrow-label">仕上がり総量（確認）</span><span class="rrow-val" id="pd-chk">—</span></div>
+        </div>
+        <div class="conc-grid">
+          <div class="ci"><div class="ci-label" style="color:#c0392b">チオグリコール酸</div><div class="ci-val" style="color:#c0392b"><span id="pd-tga">—</span><span class="ci-unit">%</span></div></div>
+          <div class="ci"><div class="ci-label" style="color:#2980b9">システアミン</div><div class="ci-val" style="color:#2980b9"><span id="pd-cys">—</span><span class="ci-unit">%</span></div></div>
+          <div class="ci"><div class="ci-label" style="color:#27ae60">チオグリセリン</div><div class="ci-val" style="color:#27ae60"><span id="pd-tg">—</span><span class="ci-unit">%</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="spec">
+      <strong>Pale Yellow</strong>（希釈剤）：TG 0.2%　合計 0.2%　／　<strong>Booster</strong>（添加剤）：システアミン 29.0%
+    </div>
+    <div class="note">
+      ※ Booster はベース剤に対して 20% 固定添加です。<br>
+      ※ 目標濃度は Pale Yellow の還元剤濃度（0.2%）より高く設定してください。
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     POWER UP（質感重視）
+================================================================ -->
+<div id="tab-up" class="tab-content">
+  <div class="main">
+
+    <!-- 薬剤スペック -->
+    <div class="spec" style="margin-top:8px">
+      <strong>Yellow</strong>：TGA 0.4%　TG 0.4%　合計 0.8%　／
+      <strong>Pale Yellow</strong>：TG 0.2%　合計 0.2%　／
+      <strong>RIKO Treatment</strong>：還元剤 0%　／
+      <strong>Booster</strong>（添加剤）：システアミン 29.0%
+    </div>
+
+    <!-- STEP1: 比率入力 -->
+    <div class="sec-label" style="margin-top:4px">STEP 1　ベース剤の比率を入力</div>
+    <div style="margin-bottom:20px;">
+      <!-- Yellow -->
+      <div class="ratio-row" style="margin-bottom:6px;">
+        <div class="ratio-dot" style="background:#7a8a10"></div>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:700;color:#7a8a10">Yellow</div>
+          <div style="font-size:9px;color:#aaa">TGA 0.4% / TG 0.4%　合計 0.8%</div>
+        </div>
+        <input type="number" class="ratio-inp" id="pu-r1" value="1" min="0" oninput="calcPU()">
+      </div>
+      <!-- Pale Yellow -->
+      <div class="ratio-row" style="margin-bottom:6px;">
+        <div class="ratio-dot" style="background:#3a6a2a"></div>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:700;color:#3a6a2a">Pale Yellow</div>
+          <div style="font-size:9px;color:#aaa">TG 0.2%　合計 0.2%</div>
+        </div>
+        <input type="number" class="ratio-inp" id="pu-r2" value="1" min="0" oninput="calcPU()">
+      </div>
+      <!-- RIKO Treatment -->
+      <div class="ratio-row">
+        <div class="ratio-dot" style="background:#c8a96e"></div>
+        <div style="flex:1;">
+          <div style="font-size:12px;font-weight:700;color:#c8a96e">RIKO Treatment</div>
+          <div style="font-size:9px;color:#aaa">還元剤 0%（質感補助）</div>
+        </div>
+        <input type="number" class="ratio-inp" id="pu-r3" value="0" min="0" oninput="calcPU()">
+      </div>
+    </div>
+
+    <!-- STEP2: 入力 -->
+    <div class="sec-label">STEP 2　数値を入力</div>
+    <div class="field">
+      <label>仕上がり総量</label>
+      <div class="field-row">
+        <input type="number" id="pu-total" placeholder="100" min="1" oninput="calcPU()">
+        <span class="field-unit">g</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>目標 総還元剤濃度</label>
+      <div class="field-row">
+        <input type="number" id="pu-target" placeholder="1.500" step="0.001" oninput="calcPU()">
+        <span class="field-unit">%</span>
+      </div>
+    </div>
+
+    <!-- 結果 -->
+    <div class="sec-label">計算結果</div>
+    <div class="result-panel" id="pu-panel">
+      <div id="pu-err" class="error-box" style="display:none"></div>
+      <div id="pu-ok">
+        <div class="result-hero" style="grid-template-columns:1fr;">
+          <div class="rhc">
+            <div class="rhc-label">Booster 添加量</div>
+            <div class="rhc-val" style="color:#2980b9"><span id="pu-boost">—</span><span class="rhc-unit">g</span></div>
+          </div>
+        </div>
+        <div class="result-body">
+          <div class="rrow" style="background:#fdfcf5;">
+            <span class="rrow-label" style="font-weight:700;color:#7a8a10">Yellow</span>
+            <span class="rrow-val" id="pu-r1-amt" style="color:#7a8a10;font-size:16px;">—</span>
+          </div>
+          <div class="rrow" style="background:#f5faf5;">
+            <span class="rrow-label" style="font-weight:700;color:#3a6a2a">Pale Yellow</span>
+            <span class="rrow-val" id="pu-r2-amt" style="color:#3a6a2a;font-size:16px;">—</span>
+          </div>
+          <div class="rrow" id="pu-riko-row">
+            <span class="rrow-label" style="font-weight:700;color:#c8a96e">RIKO Treatment</span>
+            <span class="rrow-val" id="pu-r3-amt" style="color:#c8a96e;font-size:16px;">—</span>
+          </div>
+          <div class="rrow"><span class="rrow-label">仕上がり総量（確認）</span><span class="rrow-val" id="pu-chk">—</span></div>
+        </div>
+        <div class="conc-grid">
+          <div class="ci"><div class="ci-label" style="color:#c0392b">チオグリコール酸</div><div class="ci-val" style="color:#c0392b"><span id="pu-tga">—</span><span class="ci-unit">%</span></div></div>
+          <div class="ci"><div class="ci-label" style="color:#2980b9">システアミン</div><div class="ci-val" style="color:#2980b9"><span id="pu-cys">—</span><span class="ci-unit">%</span></div></div>
+          <div class="ci"><div class="ci-label" style="color:#27ae60">チオグリセリン</div><div class="ci-val" style="color:#27ae60"><span id="pu-tg">—</span><span class="ci-unit">%</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      ※ RIKO Treatment は還元剤 0% のため純分計算には影響しません。<br>
+      ※ 目標濃度はベース剤の加重平均濃度より高く、Booster の濃度（29%）より低い値を入力してください。
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// 薬剤スペック
+// ================================================================
+const D = {
+  black:      { tga:10.7, cys:0,    tg:0   },
+  brown:      { tga:9.0,  cys:0,    tg:0   },
+  lightbrown: { tga:7.0,  cys:0,    tg:0   },
+  booster:    { tga:0,    cys:29.0, tg:0   },
+  pale:       { tga:0,    cys:0,    tg:0.2 },  // Pale Yellow（POWER DOWN希釈剤）TG0.2%
+  yellow:     { tga:0.4,  cys:0,    tg:0.4 },  // Yellow（POWER UPベース）TGA0.4%+TG0.4%=0.8%
+  paleYellow: { tga:0,    cys:0,    tg:0.2 },  // Pale Yellow（POWER UPベース）TG0.2%
+  riko:       { tga:0,    cys:0,    tg:0   },   // RIKO Treatment（0%）
+};
+const tot = d => d.tga + d.cys + d.tg;
+
+const BI = {
+  black:      { label:'Black（Rectus SH）',      color:'#2a2a4a' },
+  brown:      { label:'Brown（Rectus M）',        color:'#7a4a1a' },
+  lightbrown: { label:'Light Brown（ぷるぷるH）', color:'#8a6a10' },
+};
+
+let pdBase = 'black';
+// POWER UP: 選択中ベース剤（single選択か比率入力か）
+// → 今回は比率入力方式なので両方使用
+
+// ================================================================
+// 認証
+// ================================================================
+function checkAuth(){
+  if(document.getElementById('auth-inp').value==='imu1120box'){
+    const o=document.getElementById('auth-overlay');
+    o.style.opacity='0'; setTimeout(()=>o.style.display='none',400);
+  } else {
+    const e=document.getElementById('auth-err');
+    e.textContent='パスワードが正しくありません';
+    document.getElementById('auth-inp').value='';
+    setTimeout(()=>e.textContent='',2500);
+  }
+}
+document.getElementById('auth-inp').addEventListener('keydown',e=>{if(e.key==='Enter')checkAuth();});
+
+// ================================================================
+// POWER DOWN
+// ================================================================
+function selectBase(k,el){
+  pdBase=k;
+  document.querySelectorAll('#tab-down .drug-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  calcPD();
+}
+
+function calcPD(){
+  const T=parseFloat(document.getElementById('pd-total').value);
+  const tgt=parseFloat(document.getElementById('pd-target').value);
+  const panel=document.getElementById('pd-panel');
+  if(isNaN(T)||isNaN(tgt)||T<=0){panel.classList.remove('visible','show');return;}
+
+  const A=D[pdBase], B=D.booster, P=D.pale;
+  const M={ tga:(A.tga*100+B.tga*20)/120, cys:(A.cys*100+B.cys*20)/120, tg:(A.tg*100+B.tg*20)/120 };
+  const Mt=tot(M), Pt=tot(P);
+
+  panel.classList.add('visible');
+  setTimeout(()=>panel.classList.add('show'),10);
+
+  let err=null;
+  if(tgt<=Pt) err=`⚠ 目標濃度（${tgt}%）は Pale Yellow の濃度（${Pt}%）より高く設定してください。`;
+  else if(tgt>=Mt) err=`⚠ 目標濃度（${tgt}%）はミックス剤の濃度（${Mt.toFixed(3)}%）より低く設定してください。`;
+
+  panel.classList.toggle('has-error',!!err);
+  const errEl=document.getElementById('pd-err'), okEl=document.getElementById('pd-ok');
+  if(err){errEl.style.display='block';errEl.textContent=err;okEl.style.display='none';return;}
+  errEl.style.display='none'; okEl.style.display='block';
+
+  const Ma=T*(tgt-Pt)/(Mt-Pt), Pa=T-Ma, Aa=Ma*100/120, Ba=Ma*20/120;
+  const g=v=>v.toFixed(1)+' g';
+
+  document.getElementById('pd-py').textContent=g(Pa);
+  document.getElementById('pd-mix').textContent=g(Ma);
+  document.getElementById('pd-a').textContent=g(Aa);
+  document.getElementById('pd-b').textContent=g(Ba);
+  document.getElementById('pd-py2').textContent=g(Pa);
+  document.getElementById('pd-chk').textContent=g(T);
+
+  const bi=BI[pdBase];
+  document.getElementById('pd-albl').textContent='うち '+bi.label;
+  document.getElementById('pd-mix-el').style.color=bi.color;
+  document.getElementById('pd-a').style.color=bi.color;
+
+  document.getElementById('pd-tga').textContent=((Ma*M.tga+Pa*P.tga)/100/T*100).toFixed(3);
+  document.getElementById('pd-cys').textContent=((Ma*M.cys+Pa*P.cys)/100/T*100).toFixed(3);
+  document.getElementById('pd-tg').textContent=((Ma*M.tg+Pa*P.tg)/100/T*100).toFixed(3);
+}
+
+// ================================================================
+// POWER UP
+// ================================================================
+function calcPU(){
+  const T   = parseFloat(document.getElementById('pu-total').value);
+  const tgt = parseFloat(document.getElementById('pu-target').value);
+  const r1  = parseFloat(document.getElementById('pu-r1').value) || 0; // Yellow
+  const r2  = parseFloat(document.getElementById('pu-r2').value) || 0; // Pale Yellow
+  const r3  = parseFloat(document.getElementById('pu-r3').value) || 0; // RIKO Treatment
+  const panel = document.getElementById('pu-panel');
+
+  const sumR = r1 + r2 + r3;
+  if(isNaN(T)||isNaN(tgt)||T<=0||sumR===0){panel.classList.remove('visible','show');return;}
+
+  const Y  = D.yellow;      // Yellow: TGA0.4% TG0.4%
+  const PY = D.paleYellow;  // Pale Yellow: TG0.2%
+  const RK = D.riko;        // RIKO: 0%
+  const B  = D.booster;     // Booster: CYS29%
+
+  // ベース剤（Yellow+PaleYellow+RIKO）の加重平均濃度
+  const baseTga = (Y.tga*r1 + PY.tga*r2 + RK.tga*r3) / sumR;
+  const baseCys = (Y.cys*r1 + PY.cys*r2 + RK.cys*r3) / sumR;
+  const baseTg  = (Y.tg *r1 + PY.tg *r2 + RK.tg *r3) / sumR;
+  const baseTot = baseTga + baseCys + baseTg;
+  const bTot    = tot(B);
+
+  panel.classList.add('visible');
+  setTimeout(()=>panel.classList.add('show'),10);
+
+  let err=null;
+  if(tgt<=baseTot) err=`⚠ 目標濃度（${tgt}%）はベース剤の濃度（${baseTot.toFixed(3)}%）より高く設定してください。`;
+  else if(tgt>=bTot) err=`⚠ 目標濃度（${tgt}%）は Booster の濃度（${bTot}%）より低く設定してください。`;
+
+  panel.classList.toggle('has-error',!!err);
+  const errEl=document.getElementById('pu-err'), okEl=document.getElementById('pu-ok');
+  if(err){errEl.style.display='block';errEl.textContent=err;okEl.style.display='none';return;}
+  errEl.style.display='none'; okEl.style.display='block';
+
+  // 逆算: boostAmt + baseAmt = T
+  // boostAmt * bTot/100 + baseAmt * baseTot/100 = T * tgt/100
+  // → boostAmt = T*(tgt - baseTot)/(bTot - baseTot)
+  const boostAmt = T * (tgt - baseTot) / (bTot - baseTot);
+  const baseAmt  = T - boostAmt;
+  const r1Amt    = baseAmt * r1 / sumR;  // Yellow
+  const r2Amt    = baseAmt * r2 / sumR;  // Pale Yellow
+  const r3Amt    = baseAmt * r3 / sumR;  // RIKO Treatment
+
+  const g = v => v.toFixed(1) + ' g';
+  document.getElementById('pu-boost').textContent  = g(boostAmt);
+  document.getElementById('pu-r1-amt').textContent = g(r1Amt);
+  document.getElementById('pu-r2-amt').textContent = g(r2Amt);
+  document.getElementById('pu-r3-amt').textContent = g(r3Amt);
+  document.getElementById('pu-chk').textContent    = g(T);
+
+  // 成分濃度（RIKO=0%なので無影響、総量Tで計算）
+  const pureTga = (boostAmt*B.tga + r1Amt*Y.tga + r2Amt*PY.tga) / 100;
+  const pureCys = (boostAmt*B.cys + r1Amt*Y.cys + r2Amt*PY.cys) / 100;
+  const pureTg  = (boostAmt*B.tg  + r1Amt*Y.tg  + r2Amt*PY.tg)  / 100;
+
+  document.getElementById('pu-tga').textContent = (pureTga/T*100).toFixed(3);
+  document.getElementById('pu-cys').textContent = (pureCys/T*100).toFixed(3);
+  document.getElementById('pu-tg').textContent  = (pureTg /T*100).toFixed(3);
+}
+
+// ================================================================
+// タブ切り替え
+// ================================================================
+function switchTab(n,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+n).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
